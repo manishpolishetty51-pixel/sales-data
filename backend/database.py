@@ -20,11 +20,6 @@ def get_client() -> MongoClient:
     )
 
 
-def get_items_collection() -> Collection:
+def get_sales_collection() -> Collection:
     settings = get_settings()
     return get_client()[settings.database_name][settings.collection_name]
-
-
-def get_suppliers_collection() -> Collection:
-    settings = get_settings()
-    return get_client()[settings.database_name][settings.suppliers_collection]

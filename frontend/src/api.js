@@ -1,6 +1,6 @@
 // Thin client for the FastAPI backend. The API key (for writes only) is entered by the
 // user and kept in this browser's localStorage; it is never part of the built bundle.
-const KEY_STORAGE = 'inventory_api_key'
+const KEY_STORAGE = 'sales_api_key'
 
 export function getApiKey() {
   try {
@@ -58,21 +58,34 @@ async function request(path, { method = 'GET', body, params, write = false } = {
 
 export const api = {
   health: () => request('/health'),
-  stats: () => request('/inventory/stats'),
-  options: () => request('/inventory/options'),
-  list: (params) => request('/inventory', { params }),
-  create: (body) => request('/inventory', { method: 'POST', body, write: true }),
-  update: (id, body) => request(`/inventory/${id}`, { method: 'PUT', body, write: true }),
-  remove: (id) => request(`/inventory/${id}`, { method: 'DELETE', write: true }),
-}
-
-export const STATUS_LABEL = {
-  in_stock: 'In stock',
-  low_stock: 'Low stock',
-  out_of_stock: 'Out of stock',
+  stats: (params) => request('/sales/stats', { params }),
+  options: () => request('/sales/options'),
+  list: (params) => request('/sales', { params }),
+  create: (body) => request('/sales', { method: 'POST', body, write: true }),
+  update: (id, body) => request(`/sales/${id}`, { method: 'PUT', body, write: true }),
+  remove: (id) => request(`/sales/${id}`, { method: 'DELETE', write: true }),
 }
 
 export const rupees = (n) =>
-  n == null ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
+  n == null
+    ? '—'
+    : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
 
 export const number = (n) => (n == null ? '—' : new Intl.NumberFormat('en-IN').format(n))
+
+export const formatDate = (ms) =>
+  ms == null ? '—' : new Date(ms).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+
+export const formatDay = (ms) =>
+  ms == null ? '—' : new Date(ms).toLocaleDateString('en-IN', { dateStyle: 'medium' })
+
+// <input type="datetime-local"> works in local time without a zone suffix.
+export function toLocalInput(ms) {
+  const d = new Date(ms)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Local-day boundaries (epoch ms) for the date filters.
+export const startOfDay = (isoDate) => new Date(`${isoDate}T00:00:00`).getTime()
+export const endOfDay = (isoDate) => new Date(`${isoDate}T23:59:59.999`).getTime()

@@ -3,7 +3,7 @@ import { getApiKey, setApiKey } from '../api.js'
 
 const LINKS = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'inventory', label: 'Inventory' },
+  { id: 'sales', label: 'Sales' },
 ]
 
 export default function Sidebar({ page, onNavigate, health }) {
@@ -12,7 +12,7 @@ export default function Sidebar({ page, onNavigate, health }) {
 
   return (
     <aside className="sidebar">
-      <div className="brand">Inventory</div>
+      <div className="brand">Sales</div>
       <nav>
         {LINKS.map((l) => (
           <button

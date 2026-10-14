@@ -16,8 +16,8 @@ os.environ["API_KEY"] = "test-key"  # set before config is read
 
 from config import get_settings  # noqa: E402
 from main import app  # noqa: E402
-from routers.inventory import get_service  # noqa: E402
-from services.inventory_service import InventoryService  # noqa: E402
+from routers.sales import get_service  # noqa: E402
+from services.sales_service import SalesService  # noqa: E402
 
 get_settings.cache_clear()
 AUTH = {"X-API-Key": "test-key"}
@@ -25,7 +25,14 @@ AUTH = {"X-API-Key": "test-key"}
 
 class FakeCursor(list):
     def sort(self, key, direction=1):
-        return FakeCursor(sorted(self, key=lambda d: d.get(key, 0), reverse=direction == -1))
+        keys = key if isinstance(key, list) else [(key, direction)]
+        out = list(self)
+        for k, d in reversed(keys):  # stable sorts, least significant key first
+            out.sort(key=lambda doc: doc.get(k, 0), reverse=d == -1)
+        return FakeCursor(out)
+
+    def skip(self, n):
+        return FakeCursor(self[n:])
 
     def limit(self, n):
         return FakeCursor(self[:n])
@@ -36,8 +43,6 @@ def _matches(doc, flt):
         value = doc.get(key)
         if isinstance(cond, dict):
             if "$ne" in cond and value == cond["$ne"]:
-                return False
-            if "$in" in cond and value not in cond["$in"]:
                 return False
         elif value != cond:
             return False
@@ -54,6 +59,9 @@ class FakeCollection:
     def find_one(self, flt, projection=None):
         return next(iter(self.find(flt)), None)
 
+    def count_documents(self, flt):
+        return len(self.find(flt))
+
     def insert_one(self, doc):
         if doc["_id"] in self.docs:
             raise DuplicateKeyError("duplicate _id")
@@ -63,12 +71,7 @@ class FakeCollection:
         doc = next((d for d in self.docs.values() if _matches(d, flt)), None)
         if doc is None:
             return SimpleNamespace(matched_count=0)
-        for path, value in update["$set"].items():
-            target = doc
-            *parents, last = path.split(".")
-            for p in parents:
-                target = target.setdefault(p, {})
-            target[last] = value
+        doc.update(update["$set"])
         return SimpleNamespace(matched_count=1)
 
     def delete_one(self, flt):
@@ -78,20 +81,21 @@ class FakeCollection:
         return SimpleNamespace(deleted_count=1 if doc else 0)
 
 
-def make_item(i, sku, stock=None):
-    return {"_id": i, "id": i, "sku": sku, "name": f"Item {i}", "category": "Sarees",
-            "department": "Women", "price": 100, "cost": 60, "suppliers": [1],
-            "stock": stock or {"A": 5, "B": 7}, "size": None}
+def make_sale(i, at, lines=((1, 2, 100),), payment="Cash"):
+    items = [{"id": n, "sku": f"SKU-{n}", "name": f"Product {n}", "category": "Sarees",
+              "qty": q, "price": p} for n, q, p in lines]
+    return {"_id": i, "id": i, "store": "Madhapur", "staff": "Asha", "at": float(at),
+            "items": items, "total": sum(q * p for _, q, p in lines), "payment": payment}
 
 
 @pytest.fixture
-def fake_items():
-    return FakeCollection([make_item(1, "SKU-1"), make_item(2, "SKU-2", {"A": 0, "B": 0})])
+def fake_sales():
+    return FakeCollection([make_sale(1, 1000), make_sale(2, 2000, ((3, 1, 500), (4, 2, 250)), "UPI"),
+                           make_sale(3, 3000)])
 
 
 @pytest.fixture
-def client(fake_items):
-    suppliers = FakeCollection([{"_id": 1, "id": 1, "name": "Acme Textiles"}])
-    app.dependency_overrides[get_service] = lambda: InventoryService(fake_items, suppliers, 10)
+def client(fake_sales):
+    app.dependency_overrides[get_service] = lambda: SalesService(fake_sales)
     yield TestClient(app)
     app.dependency_overrides.clear()

@@ -1,116 +1,97 @@
 """Pydantic models for requests and responses. Field names match the existing MongoDB documents."""
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-StockStatus = Literal["in_stock", "low_stock", "out_of_stock"]
+PaymentMethod = Literal["Cash", "Card", "UPI"]
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 Money = Annotated[int, Field(ge=0, le=100_000_000)]
-Units = Annotated[int, Field(ge=0, le=1_000_000)]
+Quantity = Annotated[int, Field(ge=1, le=10_000)]
+Timestamp = Annotated[float, Field(ge=0, le=4_102_444_800_000)]  # milliseconds since epoch
 
 
-def _check_store_names(stock: dict[str, int]) -> dict[str, int]:
-    for store in stock:
-        if not store.strip() or "." in store or store.startswith("$") or len(store) > 60:
-            raise ValueError(f"invalid store name: {store!r}")
-    return stock
-
-
-class SupplierRef(BaseModel):
-    id: int
-    name: str | None = None
-
-
-class ItemOut(BaseModel):
-    id: int
+class SaleItemOut(BaseModel):
+    id: int | None = None
     sku: str | None = None
     name: str | None = None
-    type: str | None = None
-    department: str | None = None
     category: str | None = None
-    subCategory: str | None = None
-    style: str | None = None
-    fabric: str | None = None
-    occasion: str | None = None
-    colour: str | None = None
-    sizes: str | None = None
+    qty: int | None = None
     price: int | None = None
-    cost: int | None = None
-    suppliers: list[SupplierRef] = []
-    stock: dict[str, int] = {}
-    totalStock: int
-    stockStatus: StockStatus
 
 
-class ItemList(BaseModel):
-    items: list[ItemOut]
+class SaleOut(BaseModel):
+    id: int
+    store: str | None = None
+    staff: str | None = None
+    at: float | None = None
+    payment: str | None = None
+    total: int | None = None
+    items: list[SaleItemOut] = []
+    unitCount: int
+    lineCount: int
+
+
+class SaleList(BaseModel):
+    sales: list[SaleOut]
     total: int
     skip: int
     limit: int
 
 
-class _ItemWrite(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+class SaleItemIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @field_validator("stock", check_fields=False)
-    @classmethod
-    def _stock_keys(cls, v):
-        return _check_store_names(v)
-
-
-class ItemCreate(_ItemWrite):
+    id: Annotated[int, Field(ge=1, le=10**9)]
     sku: Text
     name: Text
     category: Text
-    department: Text
+    qty: Quantity
     price: Money
-    cost: Money
-    stock: dict[str, Units]
-    type: Text | None = None
-    subCategory: Text | None = None
-    style: Text | None = None
-    fabric: Text | None = None
-    occasion: Text | None = None
-    colour: Text | None = None
-    sizes: Text | None = None
-    suppliers: list[int] = []
 
 
-class ItemUpdate(_ItemWrite):
-    """Partial update: only the fields you send are changed. `stock` is merged per store."""
+class _SaleWrite(BaseModel):
+    # `total` is always computed by the server from the line items, so it is rejected here.
+    model_config = ConfigDict(extra="forbid")
 
-    sku: Text = None
-    name: Text = None
-    category: Text = None
-    department: Text = None
-    price: Money = None
-    cost: Money = None
-    stock: dict[str, Units] = None
-    type: Text = None
-    subCategory: Text = None
-    style: Text = None
-    fabric: Text = None
-    occasion: Text = None
-    colour: Text = None
-    sizes: Text = None
-    suppliers: list[int] = None
+
+class SaleCreate(_SaleWrite):
+    store: Text
+    staff: Text
+    payment: PaymentMethod
+    items: Annotated[list[SaleItemIn], Field(min_length=1, max_length=50)]
+    at: Timestamp | None = None  # defaults to now
+
+
+class SaleUpdate(_SaleWrite):
+    """Partial update: only the fields you send change. `items` replaces the whole list
+    and the total is recalculated."""
+
+    store: Text = None
+    staff: Text = None
+    payment: PaymentMethod = None
+    items: Annotated[list[SaleItemIn], Field(min_length=1, max_length=50)] = None
+    at: Timestamp = None
+
+
+class Breakdown(BaseModel):
+    name: str | None
+    count: int
+    revenue: int
 
 
 class Stats(BaseModel):
-    totalItems: int
-    totalUnits: int
-    lowStockItems: int
-    outOfStockItems: int
-    inventoryValueRetail: int
-    inventoryValueCost: int
-    lowStockThreshold: int
+    totalSales: int
+    totalRevenue: int
+    averageSale: int
+    unitsSold: int
+    firstSaleAt: float | None
+    lastSaleAt: float | None
+    byPayment: list[Breakdown]
+    byStore: list[Breakdown]
 
 
 class Options(BaseModel):
-    categories: list[str]
-    departments: list[str]
     stores: list[str]
-    suppliers: list[SupplierRef]
-    statuses: list[StockStatus]
-    lowStockThreshold: int
+    payments: list[str]
+    staff: list[str]

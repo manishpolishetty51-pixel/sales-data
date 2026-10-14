@@ -14,8 +14,6 @@ class Settings:
     mongodb_uri: str
     database_name: str
     collection_name: str
-    suppliers_collection: str
-    low_stock_threshold: int
     cors_origins: tuple[str, ...]
     api_key: str
 
@@ -27,8 +25,6 @@ def get_settings() -> Settings:
         mongodb_uri=os.getenv("MONGODB_URI", ""),
         database_name=os.getenv("DATABASE_NAME", ""),
         collection_name=os.getenv("COLLECTION_NAME", ""),
-        suppliers_collection=os.getenv("SUPPLIERS_COLLECTION", "suppliers"),
-        low_stock_threshold=int(os.getenv("LOW_STOCK_THRESHOLD", "10")),
         cors_origins=tuple(o.strip() for o in origins.split(",") if o.strip()),
         api_key=os.getenv("API_KEY", ""),
     )

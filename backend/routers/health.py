@@ -7,7 +7,7 @@ from config import get_settings
 from database import get_client
 
 router = APIRouter(prefix="/api", tags=["health"])
-log = logging.getLogger("inventory.health")
+log = logging.getLogger("sales.health")
 
 
 @router.get("/health")

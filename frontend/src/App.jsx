@@ -2,12 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.js'
 import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import InventoryPage from './components/InventoryPage.jsx'
+import SalesPage from './components/SalesPage.jsx'
 import Toasts from './components/Toasts.jsx'
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
-  const [initialStatus, setInitialStatus] = useState('')
   const [options, setOptions] = useState(null)
   const [health, setHealth] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -24,33 +23,20 @@ export default function App() {
     api.options().then(setOptions).catch((e) => notify('error', e.message))
   }, [notify, refreshKey])
 
-  const dataChanged = () => setRefreshKey((k) => k + 1)
-  const goInventory = (status = '') => {
-    setInitialStatus(status)
-    setPage('inventory')
-  }
-
   return (
     <div className="layout">
-      <Sidebar page={page} onNavigate={(p) => {
-          setInitialStatus('')
-          setPage(p)
-        }} health={health} />
+      <Sidebar page={page} onNavigate={setPage} health={health} />
       <main className="content">
         {health && health.status !== 'ok' && (
-          <div className="banner error">
-            Database problem: {health.database?.error || 'unknown error'}
-          </div>
+          <div className="banner error">Database problem: {health.database?.error || 'unknown error'}</div>
         )}
         {page === 'dashboard' ? (
-          <Dashboard refreshKey={refreshKey} onOpenInventory={goInventory} />
+          <Dashboard refreshKey={refreshKey} onOpenSales={() => setPage('sales')} />
         ) : (
-          <InventoryPage
-            key={initialStatus}
-            initialStatus={initialStatus}
+          <SalesPage
             options={options}
             refreshKey={refreshKey}
-            onChanged={dataChanged}
+            onChanged={() => setRefreshKey((k) => k + 1)}
             notify={notify}
           />
         )}

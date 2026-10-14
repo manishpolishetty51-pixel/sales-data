@@ -2,38 +2,39 @@ import re
 
 import pytest
 
-from services.inventory_service import (InvalidQuery, build_match, build_pipeline, stock_status,
-                                        total_units)
+from services.sales_service import InvalidQuery, SalesService, build_match, compute_total, unit_count
+from tests.conftest import FakeCollection
 
 
-def test_total_units_ignores_bad_values():
-    assert total_units({"A": 3, "B": 4}) == 7
-    assert total_units({"A": 3, "B": None, "C": "x", "D": True}) == 3
-    assert total_units(None) == 0
-
-
-@pytest.mark.parametrize("total,expected", [(0, "out_of_stock"), (1, "low_stock"), (10, "low_stock"),
-                                            (11, "in_stock")])
-def test_stock_status_thresholds(total, expected):
-    assert stock_status(total, 10) == expected
+def test_compute_total_and_units():
+    items = [{"qty": 2, "price": 100}, {"qty": 1, "price": 50}]
+    assert compute_total(items) == 250
+    assert unit_count([{"qty": 2}, {"qty": 3}, {"qty": None}, {"qty": True}, "bad"]) == 5
+    assert unit_count(None) == 0
 
 
 def test_search_text_is_escaped_literal():
-    match = build_match(".*(a|b)", None, None)
-    pattern = match["$and"][0]["$or"][0]["name"]["$regex"]
-    assert pattern == re.escape(".*(a|b)")
+    ors = build_match(q=".*(a|b)")["$and"][0]["$or"]
+    assert ors[0]["staff"]["$regex"] == re.escape(".*(a|b)")
+    assert all("id" not in o for o in ors)  # non-numeric text never searches by id
 
 
-def test_filters_are_exact_matches():
-    assert build_match(None, "Sarees", "Women") == {"$and": [{"category": "Sarees"}, {"department": "Women"}]}
-    assert build_match(None, None, None) == {}
+def test_numeric_search_also_matches_sale_id():
+    assert {"id": 123} in build_match(q="123")["$and"][0]["$or"]
+
+
+def test_filters_and_date_range():
+    m = build_match(store="Madhapur", payment="UPI", staff="Asha", start=10, end=20)
+    assert m["$and"] == [{"store": "Madhapur"}, {"payment": "UPI"}, {"staff": "Asha"},
+                         {"at": {"$gte": 10, "$lte": 20}}]
+    assert build_match() == {}
+
+
+def test_reversed_date_range_rejected():
+    with pytest.raises(InvalidQuery):
+        build_match(start=20, end=10)
 
 
 def test_unknown_sort_field_rejected():
     with pytest.raises(InvalidQuery):
-        build_pipeline(10, sort="$where")
-
-
-def test_status_filter_added_to_pipeline():
-    stages = build_pipeline(10, status="low_stock")
-    assert {"$match": {"stockStatus": "low_stock"}} in stages
+        SalesService(FakeCollection()).list_sales(sort="$where")

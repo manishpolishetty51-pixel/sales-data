@@ -37,7 +37,6 @@ nav { display: flex; flex-direction: column; gap: 4px; }
 .card-label { color: var(--muted); font-size: .85rem; }
 .card-value { font-size: 1.7rem; font-weight: 700; }
 .card-hint { color: var(--muted); font-size: .8rem; }
-.card.warn .card-value { color: var(--warn); } .card.danger .card-value { color: var(--bad); }
 
 .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .filters input { flex: 1 1 260px; }
@@ -64,9 +63,9 @@ tr:last-child td { border-bottom: 0; }
 .sub { color: var(--muted); font-size: .8rem; }
 .actions { white-space: nowrap; display: flex; gap: 6px; }
 .badge { padding: 3px 9px; border-radius: 999px; font-size: .78rem; white-space: nowrap; }
-.badge.in_stock { background: var(--ok-bg); color: var(--ok); }
-.badge.low_stock { background: var(--warn-bg); color: var(--warn); }
-.badge.out_of_stock { background: var(--bad-bg); color: var(--bad); }
+.badge.pay-cash { background: var(--ok-bg); color: var(--ok); }
+.badge.pay-card { background: #e4ebfb; color: var(--brand-dark); }
+.badge.pay-upi { background: #f0e6fb; color: #6b3fa0; }
 
 .pager { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 14px; }
 .pager .muted { margin-right: auto; }
@@ -87,7 +86,20 @@ tr:last-child td { border-bottom: 0; }
 .toast { padding: 12px 16px; border-radius: 10px; color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .2); }
 .toast.success { background: var(--ok); } .toast.error { background: var(--bad); }
 
+
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+.panel h2 { margin-top: 24px; }
+.date-filter { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; }
+.date-filter input { flex: none; }
+.modal.wide { max-width: 980px; }
+.line { display: grid; grid-template-columns: 90px 130px 2fr 1.3fr 80px 130px auto; gap: 8px; align-items: start; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.line label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); }
+.line input { color: var(--text); font-size: .95rem; width: 100%; }
+.line .btn { align-self: end; }
+.total-line { text-align: right; font-size: 1.1rem; margin: 16px 0 0; }
+
 @media (max-width: 800px) {
+  .line { grid-template-columns: 1fr 1fr; }
   .layout { flex-direction: column; }
   .sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; }
   .brand { padding: 0; }

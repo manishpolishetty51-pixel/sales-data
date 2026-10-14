@@ -7,13 +7,13 @@ from pymongo.errors import (AutoReconnect, DuplicateKeyError, ExecutionTimeout,
                             OperationFailure, PyMongoError)
 
 from config import get_settings
-from routers import health, inventory
-from services.inventory_service import DuplicateSku, InvalidQuery, ItemNotFound
+from routers import health, sales
+from services.sales_service import InvalidQuery, SaleNotFound
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("inventory")
+log = logging.getLogger("sales")
 
-app = FastAPI(title="Inventory Management API", version="1.0.0")
+app = FastAPI(title="Sales API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,21 +22,16 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-API-Key"],
 )
 app.include_router(health.router)
-app.include_router(inventory.router)
+app.include_router(sales.router)
 
 
 def _error(status: int, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"detail": message})
 
 
-@app.exception_handler(ItemNotFound)
-async def _not_found(_: Request, __: ItemNotFound):
-    return _error(404, "Item not found.")
-
-
-@app.exception_handler(DuplicateSku)
-async def _dup_sku(_: Request, __: DuplicateSku):
-    return _error(409, "An item with this SKU already exists.")
+@app.exception_handler(SaleNotFound)
+async def _not_found(_: Request, __: SaleNotFound):
+    return _error(404, "Sale not found.")
 
 
 @app.exception_handler(InvalidQuery)
